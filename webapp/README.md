@@ -113,7 +113,7 @@ The application logs every request, response, and error using **SLF4J** and **Lo
 ## 👨‍💻 Developer
 
 📌 **Srivarini Mandali**
-🔗 **[GitHub](https://github.com/srivarini-mandali)**
+🔗 **[GitHub](https://github.com/srivarinimandali)**
 
 
 
