@@ -47,7 +47,7 @@ See each submodule's README for details:
 
 ---
 
-## 👨‍💻 Maintainer
+## 👨‍💻 Developer
 
 **Srivarini Mandali**  
 🔗 [GitHub](https://github.com/srivarinimandali)
