@@ -1,6 +1,6 @@
 # 🛠️ WebApp Monitoring System
 
-This repository provides a complete solution to deploy and monitor a secure, cloud-native Java web application using infrastructure as code on AWS and GCP.
+This repository provides a complete solution to deploy and monitor a secure, cloud-native SpringBoot based Java web application using infrastructure as code on AWS and GCP.
 
 ---
 
@@ -8,7 +8,7 @@ This repository provides a complete solution to deploy and monitor a secure, clo
 
 | Folder         | Description                                                                 |
 |----------------|-----------------------------------------------------------------------------|
-| [`tf-aws-infra`](./tf-aws-infra) | Terraform configurations for provisioning AWS infrastructure (VPC, EC2, RDS, S3, IAM, CloudWatch, ALB, Route53, etc.) |
+| [`tf-aws-infra`](./tf-aws-infra) | Terraform configurations for provisioning GCP and AWS infrastructure (VPC, EC2, RDS, S3, IAM, CloudWatch, ALB, Route53, etc.) |
 | [`webapp`](./webapp)             | Spring Boot microservice for file management and health monitoring, integrated with AWS S3 and MySQL on RDS |
 
 ---
@@ -31,7 +31,7 @@ This system combines:
 - **DevOps**: Terraform, Packer, GitHub Actions
 - **Cloud Providers**:
   - AWS: EC2, S3, RDS, IAM, CloudWatch, ACM, ALB, Route 53
-  - GCP: Ops Agent for metrics collection
+  - GCP: Machine Images, Ops Agent for metrics collection
 - **Security**: KMS, Secrets Manager, IAM roles
 - **Testing**: JUnit, Mockito
 - **Build Tool**: Apache Maven
