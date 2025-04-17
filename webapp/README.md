@@ -19,7 +19,7 @@ Cloud Application is a robust, RESTful microservice designed to monitor applicat
 ## 🛠️ Technology Stack
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Java-21-%23ED8B00?style=for-the-badge&logo=java&logoColor=white">
+ <img src="https://img.shields.io/badge/Java-21-%23ED8B00?style=for-the-badge&logo=java&logoColor=white">
   <img src="https://img.shields.io/badge/Spring_Boot-3.1.5-%236DB33F?style=for-the-badge&logo=springboot&logoColor=white">
   <img src="https://img.shields.io/badge/MySQL-8.0-%234479A1?style=for-the-badge&logo=mysql&logoColor=white">
   <img src="https://img.shields.io/badge/Hibernate-6.2-%2359666C?style=for-the-badge&logo=hibernate&logoColor=white">
@@ -27,7 +27,10 @@ Cloud Application is a robust, RESTful microservice designed to monitor applicat
   <img src="https://img.shields.io/badge/AWS_S3-%23FF9900?style=for-the-badge&logo=amazons3&logoColor=white">
   <img src="https://img.shields.io/badge/AWS_RDS-%23232F3E?style=for-the-badge&logo=amazonrds&logoColor=white">
   <img src="https://img.shields.io/badge/AWS_EC2-%23FF9900?style=for-the-badge&logo=amazonec2&logoColor=white">
+  <img src="https://img.shields.io/badge/AWS_CloudWatch-%23232F3E?style=for-the-badge&logo=amazoncloudwatch&logoColor=white">
+  <img src="https://img.shields.io/badge/GCP-%234285F4?style=for-the-badge&logo=googlecloud&logoColor=white">
   <img src="https://img.shields.io/badge/Terraform-1.5-%23843CE0?style=for-the-badge&logo=terraform&logoColor=white">
+  <img src="https://img.shields.io/badge/Packer-1.10-%23007ACC?style=for-the-badge&logo=packer&logoColor=white">
   <img src="https://img.shields.io/badge/HikariCP-5.0-%23009688?style=for-the-badge&logo=java&logoColor=white">
   <img src="https://img.shields.io/badge/Apache_Maven-3.9.5-%23C71A36?style=for-the-badge&logo=apachemaven&logoColor=white">
   <img src="https://img.shields.io/badge/Logback-1.4.7-%23000000?style=for-the-badge&logo=logback&logoColor=white">
