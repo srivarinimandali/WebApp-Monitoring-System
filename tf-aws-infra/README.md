@@ -21,12 +21,18 @@ Before running Terraform, ensure the following dependencies are installed and co
 
 ## 🚀 Infrastructure Components
 
-![VPC](https://img.shields.io/badge/VPC-Public%20&%20Private%20Subnets-%23007EC6?style=for-the-badge)
-![EC2](https://img.shields.io/badge/EC2-IAM%20Role%20%7C%20Secure%20S3%20Access-%23FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)
-![RDS](https://img.shields.io/badge/RDS-MySQL%20%7C%20Private%20Subnet-%234479A1?style=for-the-badge&logo=mysql&logoColor=white)
-![S3](https://img.shields.io/badge/S3-Encrypted%20%7C%20Lifecycle%20Policies-%23FF4F00?style=for-the-badge&logo=amazons3&logoColor=white)
-![Security Groups](https://img.shields.io/badge/Security%20Groups-Network%20Access%20Control-%233C3C3C?style=for-the-badge)
-![IAM](https://img.shields.io/badge/IAM-Roles%20%7C%20Policies-%23232F3E?style=for-the-badge&logo=amazonaws&logoColor=white)
+![VPC](https://img.shields.io/badge/VPC-Public%20%26%20Private%20Subnets-%23007EC6?style=for-the-badge)
+![EC2](https://img.shields.io/badge/EC2-IAM%20Role%20%7C%20KMS%20Encryption%20%7C%20Secure%20Access-%23FF9900?style=for-the-badge&logo=amazonec2&logoColor=white)
+![RDS](https://img.shields.io/badge/RDS-MySQL%20%7C%20KMS%20Encrypted%20%7C%20Private-%234479A1?style=for-the-badge&logo=mysql&logoColor=white)
+![S3](https://img.shields.io/badge/S3-KMS%20Encrypted%20%7C%20Versioning%20%7C%20Lifecycle-%23FF4F00?style=for-the-badge&logo=amazons3&logoColor=white)
+![Security Groups](https://img.shields.io/badge/Security%20Groups-App%2C%20LB%2C%20RDS%20Access%20Control-%233C3C3C?style=for-the-badge)
+![IAM](https://img.shields.io/badge/IAM-Roles%20%7C%20Policies%20%7C%20CloudWatchAgent-%23232F3E?style=for-the-badge&logo=amazonaws&logoColor=white)
+![KMS](https://img.shields.io/badge/KMS-EC2%2C%20RDS%2C%20S3%2C%20Secrets%20Encryption-%236C47FF?style=for-the-badge&logo=amazonaws&logoColor=white)
+![CloudWatch](https://img.shields.io/badge/CloudWatch-Metrics%20%7C%20Agent%20%7C%20Alarms-%239C27B0?style=for-the-badge&logo=amazoncloudwatch&logoColor=white)
+![Auto Scaling](https://img.shields.io/badge/Auto%20Scaling-Launch%20Template%20%7C%20CPU-Based%20Scaling-%236DB33F?style=for-the-badge&logo=awsautoscaling&logoColor=white)
+![Load Balancer](https://img.shields.io/badge/ALB-HTTPS%20Termination%20%7C%20Routing-%23007C9D?style=for-the-badge&logo=loadbalancer&logoColor=white)
+![ACM](https://img.shields.io/badge/ACM-SSL%20Certificates%20%7C%20HTTPS%20Ingress-%23004C97?style=for-the-badge&logo=amazonaws&logoColor=white)
+![Route 53](https://img.shields.io/badge/Route%2053-ALB%20DNS%20Alias%20Record-%23217AC0?style=for-the-badge&logo=amazonroute53&logoColor=white)
 
 ## Configuration
 
