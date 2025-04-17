@@ -29,7 +29,7 @@ Before running Terraform, ensure the following dependencies are installed and co
 ![IAM](https://img.shields.io/badge/IAM-Roles%20%7C%20Policies%20%7C%20CloudWatchAgent-%23232F3E?style=for-the-badge&logo=amazonaws&logoColor=white)
 ![KMS](https://img.shields.io/badge/KMS-EC2%2C%20RDS%2C%20S3%2C%20Secrets%20Encryption-%236C47FF?style=for-the-badge&logo=amazonaws&logoColor=white)
 ![CloudWatch](https://img.shields.io/badge/CloudWatch-Metrics%20%7C%20Agent%20%7C%20Alarms-%239C27B0?style=for-the-badge&logo=amazoncloudwatch&logoColor=white)
-![Auto Scaling](https://img.shields.io/badge/Auto%20Scaling-Launch%20Template%20%7C%20CPU-Based%20Scaling-%236DB33F?style=for-the-badge&logo=awsautoscaling&logoColor=white)
+![Auto Scaling](https://img.shields.io/badge/Auto%20Scaling-Launch%20Template%20%7C%20CloudWatch%20Driven-%23FF9900?style=for-the-badge&logo=awsautoscaling&logoColor=white)
 ![Load Balancer](https://img.shields.io/badge/ALB-HTTPS%20Termination%20%7C%20Routing-%23007C9D?style=for-the-badge&logo=loadbalancer&logoColor=white)
 ![ACM](https://img.shields.io/badge/ACM-SSL%20Certificates%20%7C%20HTTPS%20Ingress-%23004C97?style=for-the-badge&logo=amazonaws&logoColor=white)
 ![Route 53](https://img.shields.io/badge/Route%2053-ALB%20DNS%20Alias%20Record-%23217AC0?style=for-the-badge&logo=amazonroute53&logoColor=white)
