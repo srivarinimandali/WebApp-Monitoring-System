@@ -1,0 +1,24 @@
+[Unit]
+Description=Web Application Service
+After=network.target
+
+[Service]
+Type=simple
+User=csye6225
+Group=csye6225
+WorkingDirectory=/opt/app
+EnvironmentFile=/opt/app/.env
+ExecStart=/usr/bin/java -jar /opt/app/cloud-0.0.1-SNAPSHOT.jar
+# Restart on failure
+Restart=always
+RestartSec=5
+# Increase file descriptor limit
+LimitNOFILE=4096
+
+# Use journalctl for logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=csye6225
+
+[Install]
+WantedBy=multi-user.target

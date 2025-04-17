@@ -1,0 +1,168 @@
+name: Build and Deploy AMI
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+          MYSQL_DATABASE: csye6225
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup MySQL Database
+        run: |
+          mysql -h 127.0.0.1 -u root -p${{ secrets.SQL_PASSWORD }} -e "CREATE DATABASE IF NOT EXISTS csye6225;"
+          mysql -h 127.0.0.1 -u root -p${{ secrets.SQL_PASSWORD }} -e "CREATE USER IF NOT EXISTS '${{ secrets.DB_USER }}'@'%' IDENTIFIED BY '${{ secrets.DB_PASSWORD }}';"
+          mysql -h 127.0.0.1 -u root -p${{ secrets.SQL_PASSWORD }} -e "GRANT ALL PRIVILEGES ON csye6225.* TO '${{ secrets.DB_USER }}'@'%';"
+
+      - name: Set Environment Variables
+        run: |
+          echo "DB_URL=${{ secrets.DB_URL }}" >> $GITHUB_ENV
+          echo "DB_USERNAME=${{ secrets.DB_USER }}" >> $GITHUB_ENV
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> $GITHUB_ENV
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
+          echo "AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}" >> $GITHUB_ENV
+
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml -DskipTests
+
+      - name: Run Integration tests
+        env:
+          SPRING_PROFILES_ACTIVE: test
+        run: mvn verify
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@v2
+
+      - name: Initialize Packer Plugins
+        run: packer init packer/
+
+      - name: Validate Packer Template
+        run: packer validate packer/
+
+      - name: Build AMI in Dev account
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          packer build \
+            -var "db_url=${DB_URL}" \
+            -var "db_username=${DB_USERNAME}" \
+            -var "db_password=${DB_PASSWORD}" \
+            packer/
+
+      - name: Get latest AMI ID
+        id: ami
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          AMI_ID=$(aws ec2 describe-images \
+            --owners self \
+            --region $AWS_REGION \
+            --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId' \
+            --output text)
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+          echo "ami_id=$AMI_ID" >> $GITHUB_OUTPUT
+          echo "✅ Latest AMI ID fetched: $AMI_ID"
+
+      - name: Share AMI with DEMO AWS Account
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          echo "Sharing AMI with Demo Account: $AMI_ID"
+          aws ec2 modify-image-attribute \
+            --image-id $AMI_ID \
+            --launch-permission "Add=[{UserId='${{ secrets.DEMO_AWS_ACCOUNT_ID }}'}]"
+
+      - name: Create new Launch Template version in Demo
+        id: lt
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.DEMO_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEMO_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AMI_ID: ${{ env.AMI_ID }}
+        run: |
+          echo "Creating new Launch Template version with AMI: $AMI_ID"
+          NEW_VERSION=$(aws ec2 create-launch-template-version \
+            --launch-template-name csye6225_asg \
+            --source-version 1 \
+            --launch-template-data "{\"ImageId\":\"$AMI_ID\"}" \
+            --query 'LaunchTemplateVersion.VersionNumber' \
+            --output text \
+            --region $AWS_REGION)
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "lt_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update Auto Scaling Group in Demo
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.DEMO_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEMO_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          NEW_VERSION: ${{ steps.lt.outputs.lt_version }}
+        run: |
+          echo "Updating ASG to use Launch Template version $NEW_VERSION"
+          aws autoscaling update-auto-scaling-group \
+            --auto-scaling-group-name webapp-asg \
+            --launch-template "LaunchTemplateName=csye6225_asg,Version=$NEW_VERSION" \
+            --region $AWS_REGION
+
+      - name: Start Instance Refresh in Demo
+        id: refresh
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.DEMO_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEMO_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          REFRESH_ID=$(aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name webapp-asg \
+            --preferences '{"MinHealthyPercentage": 100, "InstanceWarmup": 300}' \
+            --query 'InstanceRefreshId' \
+            --output text)
+          echo "REFRESH_ID=$REFRESH_ID" >> $GITHUB_ENV
+          echo "::set-output name=refresh_id::$REFRESH_ID"
+
+      - name: Wait for Instance Refresh to complete
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.DEMO_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEMO_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          STATUS="InProgress"
+          while [ "$STATUS" != "Successful" ]; do
+            STATUS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name webapp-asg \
+              --query 'InstanceRefreshes[0].Status' --output text)
+            echo "Refresh status: $STATUS"
+            if [ "$STATUS" == "Cancelled" ] || [ "$STATUS" == "Failed" ]; then
+              echo "Instance refresh failed or cancelled."
+              exit 1
+            fi
+            sleep 30
+          done
+

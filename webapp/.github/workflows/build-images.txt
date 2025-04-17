@@ -1,0 +1,162 @@
+#Converted to txt to avoid workflow trigger
+name: Build and Create AWS & GCP Images on Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  build-and-image:
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+          MYSQL_DATABASE: csye6225
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: 'beta'
+
+      - name: Setup MySQL Database
+        run: |
+          echo "Setting up MySQL database..."
+          mysql -h 127.0.0.1 -u root -p${{ secrets.SQL_PASSWORD }} -e "CREATE DATABASE IF NOT EXISTS csye6225;"
+          mysql -h 127.0.0.1 -u root -p${{ secrets.SQL_PASSWORD }} -e "CREATE USER IF NOT EXISTS '${{ secrets.DB_USER }}'@'%' IDENTIFIED BY '${{ secrets.DB_PASSWORD }}';"
+          mysql -h 127.0.0.1 -u root -p${{ secrets.SQL_PASSWORD }} -e "GRANT ALL PRIVILEGES ON csye6225.* TO '${{ secrets.DB_USER }}'@'%';"
+          mysql -h 127.0.0.1 -u root -p${{ secrets.SQL_PASSWORD }} -e "FLUSH PRIVILEGES;"
+
+      - name: Set Environment Variables
+        run: |
+          echo "DB_URL=${{ secrets.DB_URL }}" >> $GITHUB_ENV
+          echo "DB_USERNAME=${{ secrets.DB_USER }}" >> $GITHUB_ENV
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
+          echo "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
+
+      - name: Verify Environment Variables
+        run: |
+          echo "DB_URL=$DB_URL"
+          echo "DB_USERNAME=$DB_USERNAME"
+          echo "DB_PASSWORD=$DB_PASSWORD"
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml -DskipTests
+
+      - name: Run Integration tests
+        env:
+          SPRING_PROFILES_ACTIVE: test
+        run: mvn verify
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@v2
+
+      - name: Initialize Packer Plugins
+        run: packer init packer/
+
+      - name: Validate Packer Template
+        run: packer validate packer/
+
+      - name: Build Custom AWS & GCP Images with Packer
+        run: |
+          packer build \
+            -var "db_url=${DB_URL}" \
+            -var "db_username=${DB_USERNAME}" \
+            -var "db_password=${DB_PASSWORD}" \
+            -var "gcp_project_id=${GCP_PROJECT_ID}" \
+            packer/
+
+      - name: Retrieve AMI ID
+        run: |
+          AMI_ID=$(aws ec2 describe-images --owners self --region us-east-1 --query 'Images[-1].ImageId' --output text)
+          if [[ -z "$AMI_ID" || "$AMI_ID" == "None" ]]; then
+            echo "Error: No AMI found in dev profile."
+            exit 1
+          fi
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+          echo "Found AMI: $AMI_ID"
+
+      - name: Share AMI with DEMO AWS Account
+        run: |
+          aws ec2 modify-image-attribute --image-id $AMI_ID --launch-permission "Add=[{UserId='${{ secrets.DEMO_AWS_ACCOUNT_ID }}'}]"
+          echo "Shared AMI $AMI_ID with AWS Demo Account"
+
+      - name: Retrieve Latest GCP Image Name
+        id: get_gcp_image_name
+        run: |
+          IMAGE_NAME=$(gcloud compute images list --project=${{ secrets.GCP_PROJECT_ID }} --filter="name~'webapp-image-'" --format="value(name)" | tail -n1)
+          if [[ -z "$IMAGE_NAME" ]]; then
+            echo "Error: No GCP image found."
+            exit 1
+          fi
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+          echo "Using GCP Image: $IMAGE_NAME"
+
+      - name: Set Machine Image Name
+        id: set_machine_image_name
+        run: |
+          MACHINE_IMAGE_NAME="webapp-machine-image-$(date +%s)"
+          echo "MACHINE_IMAGE_NAME=$MACHINE_IMAGE_NAME" >> $GITHUB_ENV
+          echo "Generated Machine Image Name: $MACHINE_IMAGE_NAME"
+
+      - name: Create VM from Latest GCP Image
+        run: |
+          gcloud compute instances create my-webapp-instance \
+          --project=${{ secrets.GCP_PROJECT_ID }} \
+          --zone=us-central1-c \
+          --machine-type=e2-medium \
+          --image=$IMAGE_NAME
+          echo "VM my-webapp-instance created successfully from $IMAGE_NAME"
+
+      - name: Create Machine Image from VM
+        run: |
+          gcloud compute machine-images create $MACHINE_IMAGE_NAME \
+          --source-instance=my-webapp-instance \
+          --source-instance-zone=us-central1-c \
+          --storage-location=us-central1 \
+          --project=${{ secrets.GCP_PROJECT_ID }}
+          echo "Machine Image $MACHINE_IMAGE_NAME created successfully"
+
+      - name: Stop VM After Machine Image Creation
+        run: |
+          gcloud compute instances stop my-webapp-instance \
+          --project=${{ secrets.GCP_PROJECT_ID }} \
+          --zone=us-central1-c
+          echo "Stopped VM my-webapp-instance after creating Machine Image"
+
+      - name: Share Machine Image with DEMO Project
+        run: |
+          echo "Sharing Machine Image $MACHINE_IMAGE_NAME with GCP Demo Project..."
+          gcloud compute machine-images add-iam-policy-binding $MACHINE_IMAGE_NAME \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --member="serviceAccount:${{ secrets.DEMO_GCP_PROJECT_SA }}" \
+            --role="roles/compute.admin"
+
+          echo "Successfully shared Machine Image $MACHINE_IMAGE_NAME with GCP Demo Project"
+          
